@@ -32,3 +32,20 @@ def test_vigenere_roundtrip_preserves_nonletters():
 def test_base85_roundtrip():
     blob = b"the quick brown fox \x00\x01\x02 jumps"
     assert build.b85decode(build.b85encode(blob)) == blob
+
+
+def test_render_png_is_valid_png_and_deterministic():
+    a = build.render_png("flag{maze_6_pixels}")
+    b = build.render_png("flag{maze_6_pixels}")
+    assert a[:8] == b"\x89PNG\r\n\x1a\n"   # PNG magic
+    assert b"IEND" in a
+    assert a == b                          # deterministic
+
+
+def test_append_and_carve_roundtrip():
+    png = build.render_png("flag{maze_6_pixels}")
+    trailer = b"salt:n3o\npayload:deadbeef"
+    blob = png + trailer
+    # carve helper lives in solve; verify the boundary math here
+    idx = blob.index(b"IEND")
+    assert blob[idx + 8:] == trailer

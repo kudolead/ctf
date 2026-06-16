@@ -66,6 +66,21 @@ def b85decode(text: str) -> bytes:
     return base64.a85decode(text.encode("ascii"))
 
 
+def render_png(text: str) -> bytes:
+    """Draw `text` onto a small white bitmap and return deterministic PNG bytes.
+
+    Uses Pillow's built-in bitmap font (no external font file) so output is
+    reproducible. No timestamp chunk is written by default.
+    """
+    img = Image.new("RGB", (520, 90), "white")
+    draw = ImageDraw.Draw(img)
+    draw.text((12, 18), "Encryption Maze - Stage 6", fill=(40, 40, 40))
+    draw.text((12, 48), text, fill=(0, 0, 0))
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
 def main() -> None:  # replaced in Task 5
     pass
 
