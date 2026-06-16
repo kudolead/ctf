@@ -7,7 +7,6 @@ and prints all seven flags (master flag last). Reads only ../handout/.
 from __future__ import annotations
 
 import base64
-import codecs  # noqa: F401  (kept for parity; rot not used in this version)
 import gzip
 import re
 import sys
@@ -108,7 +107,7 @@ def solve(cipher: str) -> list[str]:
     # Stage 6: From Base64 -> PNG (flag in pixels) + carved boss blob
     png_plus = base64.b64decode(ct6)
     assert png_plus[:8] == b"\x89PNG\r\n\x1a\n", "stage 6 is not a PNG"
-    flags.append("flag{maze_6_pixels}")   # rendered visually; verified by valid PNG
+    flags.append("flag{maze_6_pixels}")   # NOTE: flag 6 is drawn in the PNG pixels; not OCR'd here, only the valid-PNG structure is checked (manual visual read per design spec)
     boss_blob = carve_after_iend(png_plus).decode("utf-8")
 
     # Stage 7: Register + Subsection + Fork boss

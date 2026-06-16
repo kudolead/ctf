@@ -114,3 +114,15 @@ def test_full_chain_roundtrip(tmp_path, monkeypatch):
         "flag{maze_6_pixels}",
         "flag{maze_7_full_recipe_unl0ck3d}",
     ]
+
+
+def test_stage2_base85_is_cyberchef_safe(tmp_path, monkeypatch):
+    # Stage-2 ASCII85 payload must have no 'z' zero-group abbreviation and no
+    # whitespace, so CyberChef 'From Base85' (alphabet !-u) decodes it cleanly.
+    monkeypatch.setattr(build, "HANDOUT", tmp_path)
+    build.main()
+    cipher = (tmp_path / "cipher.txt").read_text(encoding="utf-8").strip()
+    block = base64.b64decode(cipher).decode("utf-8")
+    ct2 = block.rsplit(build.MARKER, 1)[-1]
+    assert "z" not in ct2
+    assert not any(c.isspace() for c in ct2)
