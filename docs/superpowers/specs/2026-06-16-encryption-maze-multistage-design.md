@@ -50,7 +50,7 @@ instruction text states which applies:
 | 4 | XOR + **multi-byte key recovery via crib** | `From Base64` → `XOR` key `vigenere` (UTF-8) | word from flag 3, crib-recovered | `flag{maze_4_crib_and_brute}` |
 | 5 | Spot **magic bytes**, decompress | `From Hex` → `Gunzip` (recognize `1f 8b`) | — | `flag{maze_5_inflate}` |
 | 6 | Binary / file handling, file carving | `From Base64` → `Render Image` (flag in pixels); carve bytes after PNG `IEND` for stage 7 | — | `flag{maze_6_pixels}` |
-| 7 | **BOSS: Registers + Subsection + Fork** | `Register` `salt:(\w+)` → `Subsection` `payload:(.*)` → `Fork` on `\|` → `From Hex` → `XOR` key `pixels$R0` → `Merge` | word from flag 6 (`pixels`) + register `$R0` | `flag{maze_7_full_recipe_unl0ck3d}` (master) |
+| 7 | **BOSS: Registers + Subsection + Fork** | `Register` `salt:(\w+)` → `Subsection` `payload:([0-9a-f|]+)` → `Fork` on `\|` → `From Hex` → `XOR` key `pixels$R0` → `Merge` | word from flag 6 (`pixels`) + register `$R0` | `flag{maze_7_full_recipe_unl0ck3d}` (master) |
 
 ### Per-stage detail
 
