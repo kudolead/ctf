@@ -88,3 +88,29 @@ def test_stage1_is_base64_of_a_block_with_flag1_and_marker():
     assert block.startswith(build.FLAG_1)
     assert block.count(build.MARKER) == 1
     assert block.endswith("PAYLOAD")
+
+
+solve = _load("em_solve", "solution/solve.py")
+
+
+def test_recover_key_from_crib():
+    # 12-byte crib recovers the 8-byte repeating key 'vigenere'
+    sample = b"flag{maze_4_crib_and_brute} rest of block"
+    ct = base64.b64encode(build.xor(sample, b"vigenere")).decode()
+    assert solve.recover_key(ct, crib=b"flag{maze_4_") == b"vigenere"
+
+
+def test_full_chain_roundtrip(tmp_path, monkeypatch):
+    monkeypatch.setattr(build, "HANDOUT", tmp_path)
+    build.main()
+    cipher = (tmp_path / "cipher.txt").read_text(encoding="utf-8").strip()
+    flags = solve.solve(cipher)
+    assert flags == [
+        "flag{maze_1_trust_the_magic}",
+        "flag{maze_2_alphabet}",
+        "flag{maze_3_vigenere}",
+        "flag{maze_4_crib_and_brute}",
+        "flag{maze_5_inflate}",
+        "flag{maze_6_pixels}",
+        "flag{maze_7_full_recipe_unl0ck3d}",
+    ]
