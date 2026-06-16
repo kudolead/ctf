@@ -1,0 +1,18 @@
+# Generated participant artifacts — regenerated from build scripts.
+# Keep the folders (via .gitkeep) but ignore their contents.
+challenges/*/handout/*
+!challenges/*/handout/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

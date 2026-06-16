@@ -1,0 +1,5 @@
+# Shared build/solve dependencies for the CTF challenges.
+# Pin loosely; tighten before a live event.
+
+scapy>=2.5        # 02-dns-logs: craft/parse the pcap
+pyzipper>=0.3.6   # 03-siem-password-hunt: build an AES-encrypted password-protected zip
