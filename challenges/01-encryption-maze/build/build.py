@@ -1,91 +1,73 @@
 #!/usr/bin/env python3
-"""Build the Encryption Maze handout.
+"""Build the Encryption Maze handout — a self-guiding 7-stage CyberChef maze.
 
-Implements the layered-encoding cascade from ../README.md and writes the
-artifacts into ../handout/.
+See ../README.md for the curriculum and
+docs/superpowers/specs/2026-06-16-encryption-maze-multistage-design.md for the
+design. The chain is composed inner->outer so solution/solve.py reverses it.
 
-Cascade (innermost transform applied first; outermost is what the participant
-first sees). Build order:
-
-    plaintext FLAG
-      -> XOR with a short repeating key            (innermost)
-      -> Base58 encode (Bitcoin alphabet)
-      -> ROT13
-      -> reverse the string                        (red-herring / discipline)
-      -> Hex encode
-      -> Base64 encode                             (outermost)
-
-solution/solve.py reverses this exactly.
-
-Contract (see /CONVENTIONS.md):
-- FLAG is the single source of truth.
-- Write only into the sibling handout/ directory.
-- Deterministic output (no randomness).
+Contract (see /CONVENTIONS.md): flags are the single source of truth; writes
+only into the sibling handout/; deterministic output (fixed salt, mtime=0).
 """
 from __future__ import annotations
 
 import base64
 import codecs
+import gzip
+import io
 from pathlib import Path
 
-FLAG = "flag{p33l_th3_3ncrypt10n_m4z3}"
-
-# Short repeating XOR key. Participants recover this from the `flag{` crib once
-# they have peeled back to the XOR layer.
-XOR_KEY = b"maze"
+from PIL import Image, ImageDraw
 
 HANDOUT = Path(__file__).resolve().parent.parent / "handout"
 
-# Bitcoin / IPFS Base58 alphabet — the default CyberChef "From/To Base58" uses.
-_B58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+FLAG_1 = "flag{maze_1_trust_the_magic}"
+FLAG_2 = "flag{maze_2_alphabet}"
+FLAG_3 = "flag{maze_3_vigenere}"
+FLAG_4 = "flag{maze_4_crib_and_brute}"
+FLAG_5 = "flag{maze_5_inflate}"
+FLAG_6 = "flag{maze_6_pixels}"
+FLAG_7 = "flag{maze_7_full_recipe_unl0ck3d}"
+
+VIGENERE_KEY = "alphabet"
+XOR_KEY = b"vigenere"
+BOSS_KEYWORD = "pixels"
+BOSS_SALT = "n3o"
+
+MARKER = "\n--- NEXT STAGE INPUT (paste this into a fresh Input) ---\n"
 
 
-def _xor(data: bytes, key: bytes) -> bytes:
+def xor(data: bytes, key: bytes) -> bytes:
     return bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
 
 
-def _b58encode(data: bytes) -> str:
-    """Base58 encode (Bitcoin alphabet), preserving leading-zero bytes as '1'."""
-    n = int.from_bytes(data, "big")
-    out = ""
-    while n > 0:
-        n, rem = divmod(n, 58)
-        out = _B58_ALPHABET[rem] + out
-    # Leading zero bytes -> leading '1' characters.
-    pad = len(data) - len(data.lstrip(b"\x00"))
-    return "1" * pad + out
+def vigenere(text: str, key: str, decrypt: bool = False) -> str:
+    """CyberChef-compatible Vigenere: only letters are shifted; the key index
+    advances only on letters; case preserved; non-letters pass through."""
+    out, ki, key = [], 0, key.lower()
+    for ch in text:
+        if ch.isalpha():
+            base = ord("A") if ch.isupper() else ord("a")
+            shift = ord(key[ki % len(key)]) - ord("a")
+            if decrypt:
+                shift = -shift
+            out.append(chr((ord(ch) - base + shift) % 26 + base))
+            ki += 1
+        else:
+            out.append(ch)
+    return "".join(out)
 
 
-def encode_layers(plaintext: str) -> str:
-    """Apply the outer->inner encoding cascade and return the final blob."""
-    # Layer 6 (innermost): XOR the raw plaintext bytes with the repeating key.
-    step = _xor(plaintext.encode("utf-8"), XOR_KEY)
-
-    # Layer 5: Base58 encode -> printable ASCII text.
-    step_s = _b58encode(step)
-
-    # Layer 4: ROT13 (only rotates A-Z/a-z; Base58 digits pass through).
-    step_s = codecs.encode(step_s, "rot_13")
-
-    # Layer 3: reverse the string (red herring — looks like data, isn't a codec).
-    step_s = step_s[::-1]
-
-    # Layer 2: Hex encode.
-    step_s = step_s.encode("utf-8").hex()
-
-    # Layer 1 (outermost): Base64 encode.
-    blob = base64.b64encode(step_s.encode("utf-8")).decode("ascii")
-    return blob
+def b85encode(data: bytes) -> str:
+    """Standard ASCII85 (CyberChef 'From Base85' alphabet !-u), no framing."""
+    return base64.a85encode(data).decode("ascii")
 
 
-def main() -> None:
-    HANDOUT.mkdir(exist_ok=True)
-    blob = encode_layers(FLAG)
-    (HANDOUT / "cipher.txt").write_text(blob + "\n", encoding="utf-8")
-    (HANDOUT / "brief.txt").write_text(
-        "Something is hidden in here. Peel it back.\n", encoding="utf-8"
-    )
-    print(f"wrote cipher.txt ({len(blob)} bytes) and brief.txt to {HANDOUT}")
+def b85decode(text: str) -> bytes:
+    return base64.a85decode(text.encode("ascii"))
+
+
+def main() -> None:  # replaced in Task 5
+    pass
 
 
 if __name__ == "__main__":
