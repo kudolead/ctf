@@ -81,6 +81,20 @@ def render_png(text: str) -> bytes:
     return buf.getvalue()
 
 
+def encode_boss(master_block: str) -> str:
+    """Produce the stage-7 boss input.
+
+    CyberChef solve: Register `salt:(\\w+)` -> $R0; Subsection
+    `payload:([0-9a-f|]+)`; Fork on `|`; From Hex; XOR key `pixels$R0`; Merge.
+    """
+    key = (BOSS_KEYWORD + BOSS_SALT).encode()
+    data = master_block.encode("utf-8")
+    n = len(data)
+    chunks = [data[: n // 3], data[n // 3 : 2 * n // 3], data[2 * n // 3 :]]
+    parts = [xor(c, key).hex() for c in chunks]
+    return f"salt:{BOSS_SALT}\npayload:" + "|".join(parts)
+
+
 def main() -> None:  # replaced in Task 5
     pass
 

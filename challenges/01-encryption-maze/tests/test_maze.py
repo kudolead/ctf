@@ -49,3 +49,20 @@ def test_append_and_carve_roundtrip():
     # carve helper lives in solve; verify the boundary math here
     idx = blob.index(b"IEND")
     assert blob[idx + 8:] == trailer
+
+
+def test_encode_boss_roundtrips_and_is_cyberchef_shaped():
+    master = "flag{maze_7_full_recipe_unl0ck3d}\nYou escaped the maze!"
+    blob = build.encode_boss(master)
+    assert "salt:n3o" in blob
+    assert "payload:" in blob
+    assert blob.count("|") == 2          # three hex chunks
+    # manual inverse mirrors the CyberChef recipe
+    import re
+    salt = re.search(r"salt:(\w+)", blob).group(1)
+    key = (build.BOSS_KEYWORD + salt).encode()
+    payload = blob.split("payload:", 1)[1]
+    recovered = b"".join(
+        build.xor(bytes.fromhex(p), key) for p in payload.split("|")
+    ).decode()
+    assert recovered == master
