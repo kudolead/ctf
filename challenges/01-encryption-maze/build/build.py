@@ -34,52 +34,16 @@ BOSS_SALT = "n3o"
 
 MARKER = "\n--- NEXT STAGE INPUT (paste this into a fresh Input) ---\n"
 
-INSTR_1 = (
-    "Welcome to the Encryption Maze. You just used Base64 (the trailing '=' was "
-    "the tell) -- the Magic op would have spotted it too.\n"
-    "The next blob is NOT Base64: look at its alphabet -- it is dense with "
-    "punctuation (!#$%&*+). That is ASCII85 / Base85. Use 'From Base85' with the "
-    "standard alphabet (!-u)."
-)
-INSTR_2 = (
-    "Nice -- you recognised an encoding by its alphabet instead of trusting "
-    "Magic's top pick.\nThe next blob is a Vigenere cipher. The key is the "
-    "KEYWORD from THIS flag: 'alphabet'. Use 'Vigenere Decode'."
-)
-INSTR_3 = (
-    "The next blob is Base64, and underneath that it is XOR'd. 'From Base64' "
-    "first.\nThe key is NOT given. Recover it: every flag here looks like "
-    "flag{maze_N_...}, so you have a 12-character known-plaintext crib. The "
-    "'XOR Brute Force' op handles single-byte keys; for this multi-byte key, XOR "
-    "the crib against the first bytes -- the repeating result will look familiar "
-    "(hint: it is the keyword from your last flag)."
-)
-INSTR_4 = (
-    "The next blob is hex. 'From Hex', then look at the first bytes: 1f 8b 08 is "
-    "the gzip magic number. Finish with 'Gunzip' (or 'Raw Inflate')."
-)
-INSTR_5 = (
-    "The next blob is Base64 of a PNG image. 'From Base64' then 'Render Image' to "
-    "READ your stage-6 flag off the pixels.\n"
-    "But a PNG ends at its IEND chunk -- the bytes AFTER it are the final boss "
-    "input. Carve them (e.g. 'Detect File Type' confirms the trailing data).\n"
-    "FINAL BOSS: the carved text holds a salt and a pipe-delimited hex payload. "
-    "You'll need CyberChef's flow-control ops: Register (to capture the salt into "
-    "$R0), Subsection (to target only the hex payload), and Fork (to split on the "
-    "pipe). Each chunk is hex, then XOR'd; the key is THIS stage's keyword "
-    "'pixels' followed by the captured salt -- put 'pixels$R0' in the XOR key "
-    "field -- then Merge."
-)
+# Unguided maze: each stage reveals only its flag and the next ciphertext.
+# No in-band "use op X" instructions -- the player must recognise every layer
+# cold. The per-stage solution lives only in solution/ANSWER.md (author key).
 MASTER_BLOCK = (
     f"{FLAG_7}\n"
-    ":: You escaped the Encryption Maze! ::\n"
-    "You chained Magic, alphabet-recognition, Vigenere, XOR key-recovery, "
-    "decompression, image carving, and CyberChef registers/subsections/forks. "
-    "Submit the master flag above."
+    ":: You escaped the Encryption Maze! ::"
 )
 BRIEF = (
     "Something is hidden in here. Peel it back.\n"
-    "Each layer teaches you the next and drops a flag -- collect all seven.\n"
+    "Seven flags are buried in the layers -- no hints, recognise each one yourself.\n"
 )
 
 
@@ -157,19 +121,19 @@ def main() -> None:
     boss_blob = encode_boss(MASTER_BLOCK)                       # stage 7 input
     ct6 = base64.b64encode(render_png(FLAG_6) + boss_blob.encode("utf-8")).decode("ascii")
 
-    revealed_5 = reveal(FLAG_5, INSTR_5, ct6)
+    revealed_5 = reveal(FLAG_5, "", ct6)
     ct5 = gzip.compress(revealed_5.encode("utf-8"), mtime=0).hex()
 
-    revealed_4 = reveal(FLAG_4, INSTR_4, ct5)
+    revealed_4 = reveal(FLAG_4, "", ct5)
     ct4 = base64.b64encode(xor(revealed_4.encode("utf-8"), XOR_KEY)).decode("ascii")
 
-    revealed_3 = reveal(FLAG_3, INSTR_3, ct4)
+    revealed_3 = reveal(FLAG_3, "", ct4)
     ct3 = vigenere(revealed_3, VIGENERE_KEY)
 
-    revealed_2 = reveal(FLAG_2, INSTR_2, ct3)
+    revealed_2 = reveal(FLAG_2, "", ct3)
     ct2 = b85encode(revealed_2.encode("utf-8"))
 
-    revealed_1 = reveal(FLAG_1, INSTR_1, ct2)
+    revealed_1 = reveal(FLAG_1, "", ct2)
     cipher = base64.b64encode(revealed_1.encode("utf-8")).decode("ascii")
 
     (HANDOUT / "cipher.txt").write_text(cipher + "\n", encoding="utf-8")

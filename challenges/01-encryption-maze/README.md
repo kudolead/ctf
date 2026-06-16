@@ -1,17 +1,18 @@
 # 01 — Encryption Maze
 
 **Category:** Forensics / Encoding
-**Difficulty:** Medium (ramps across 7 stages; ~3-4 hours for a junior)
+**Difficulty:** Hard — unguided (ramps across 7 stages; ~3-4 hours for a junior)
 **Flags:** seven chained stage flags — canonical/master in [`solution/ANSWER.md`](solution/ANSWER.md)
 
 ## Summary
 
-A self-guiding, 7-stage CyberChef maze. Participants receive a single blob
-(`cipher.txt`). Each stage, when correctly processed, reveals a block containing
-(1) that stage's flag, (2) instructions teaching the next CyberChef technique,
-and (3) the next stage's ciphertext. The maze narrates its own curriculum — the
-player never needs to leave CyberChef. Difficulty ramps so each stage forces a
-*distinct* skill; the Magic op alone cannot finish it.
+An **unguided** 7-stage CyberChef maze. Participants receive a single blob
+(`cipher.txt`). Each stage, when correctly processed, reveals only that stage's
+flag and the next stage's ciphertext — **no instructions**. The player must
+recognise every encoding and cipher on their own. Difficulty ramps so each stage
+forces a *distinct* skill; the Magic op alone cannot finish it. (An earlier
+revision narrated the next technique in-band; that guidance was removed to raise
+the difficulty.)
 
 ## Curriculum
 
@@ -52,12 +53,8 @@ See [`solution/ANSWER.md`](solution/ANSWER.md) for the per-stage CyberChef recip
 and all flags, and [`solution/solve.py`](solution/solve.py) for the programmatic
 reference solver (prints all seven flags; doubles as the solvability check).
 
-## Hint ladder (one rung per stuck stage)
+## Hints
 
-1. Stage 1: the trailing `=` and the alphabet say Base64. Try Magic.
-2. Stage 2: this isn't Base64 — count the punctuation. It's Base85 (`From Base85`, alphabet `!-u`).
-3. Stage 3: it's a Vigenère cipher; the key is the keyword from your last flag (`alphabet`).
-4. Stage 4: `From Base64`, then XOR. You weren't given the key — every flag is `flag{maze_N_...}`, so crib-drag `flag{maze_4_` to recover it.
-5. Stage 5: `From Hex`, then read the first bytes — `1f 8b` is gzip. `Gunzip`.
-6. Stage 6: `From Base64` then `Render Image`. The flag is in the picture — and there's data after the PNG's `IEND`.
-7. Stage 7: `Register` the salt, `Subsection` the payload, `Fork` on `|`, `From Hex`, `XOR` key `pixels$R0` (UTF8), `Merge`.
+This challenge is intentionally **unguided** — there is no player-facing hint
+ladder. The complete per-stage CyberChef recipe lives only in
+[`solution/ANSWER.md`](solution/ANSWER.md) as the author key.
