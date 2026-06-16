@@ -1,70 +1,63 @@
 # 01 — Encryption Maze
 
-**Category:** Forensics
-**Difficulty:** Easy → Medium (scales with number of layers)
-**Flag:** `flag{...}` — canonical value in [`solution/ANSWER.md`](solution/ANSWER.md)
+**Category:** Forensics / Encoding
+**Difficulty:** Medium (ramps across 7 stages; ~3-4 hours for a junior)
+**Flags:** seven chained stage flags — canonical/master in [`solution/ANSWER.md`](solution/ANSWER.md)
 
 ## Summary
 
-Participants receive a single blob of text/data that has been run through a
-*chain* of encodings and light ciphers. They must peel the layers one at a time
-— ideally in [CyberChef](https://gchq.github.io/CyberChef/) — until the flag
-falls out. The point is **recognizing** each layer from its shape, not brute
-force.
+A self-guiding, 7-stage CyberChef maze. Participants receive a single blob
+(`cipher.txt`). Each stage, when correctly processed, reveals a block containing
+(1) that stage's flag, (2) instructions teaching the next CyberChef technique,
+and (3) the next stage's ciphertext. The maze narrates its own curriculum — the
+player never needs to leave CyberChef. Difficulty ramps so each stage forces a
+*distinct* skill; the Magic op alone cannot finish it.
 
-## Learning objectives
+## Curriculum
 
-- Identify common encodings by sight: Base64, Base32, Base58, hex, URL,
-  decimal/octal, Morse.
-- Recognize classic ciphers: ROT13/Caesar, Atbash, XOR with a short key, vigenère.
-- Drive CyberChef: stacking operations, "Magic" detection, and the recipe view.
-- Understand that "encryption maze" = layered obfuscation, peeled outside-in.
+| # | CyberChef skill | Mechanic | Key source |
+|---|---|---|---|
+| 1 | Magic op, Base64, recipe view | From Base64 | — |
+| 2 | Recognise an encoding by its alphabet (Magic under-ranks Base85) | From Base85 (`!-u`) | — |
+| 3 | Classic ciphers | Vigenère Decode, key `alphabet` | keyword from flag 2 |
+| 4 | XOR + multi-byte key recovery via crib | From Base64 → XOR key `vigenere` | keyword from flag 3 |
+| 5 | Recognise magic bytes, decompress | From Hex → Gunzip (`1f 8b`) | — |
+| 6 | Binary/file handling + file carving | From Base64 → Render Image; carve after `IEND` | — |
+| 7 | Registers + Subsection + Fork | Register/Subsection/Fork/From Hex/XOR/Merge | keyword from flag 6 + register salt |
 
-## Intended mechanics
+## Chaining modes
 
-A cascade where each layer's output feeds the next, with two layers chosen to
-defeat blind *Magic* spamming. **As-built** recipe (innermost applied first;
-outermost is what the participant first sees):
+- **Keyed handoff** (stages 3, 4, 7): the key is the keyword from the previous
+  stage's flag — you cannot skip a stage because its flag word is required next.
+- **Positional handoff** (stages 2, 5, 6): no key; the previous block simply
+  embeds the next ciphertext.
 
-1. Start with `FLAG` plaintext.
-2. XOR with a short repeating key (`maze`).  ← key recovery, the main time sink
-3. Base58 encode (Bitcoin alphabet).         ← Magic ranks below Base64
-4. ROT13.
-5. Reverse the string.                        ← red herring: not a codec
-6. Hex encode.
-7. Base64 encode.                             ← this is what the participant first sees.
+## Difficulty rationale
 
-To **solve**, reverse the list: From Base64 → From Hex → Reverse → ROT13 →
-From Base58 → XOR (key `maze`). *Magic* peels the Base64/Hex/ROT13 layers but
-stalls on the Reverse and under-ranks the Base58, so the participant must reason
-about layer shape. The flag and key are the single source of truth in
-`build/build.py`; see `solution/ANSWER.md` for the full recipe and intermediate
-values.
+Magic peels the easy encodings (Base64/Hex) for free, so the friction sits where
+Magic fails: recognising Base85 by alphabet, recovering the multi-byte XOR key
+from the `flag{maze_4_` crib, spotting gzip magic bytes, carving data after a
+PNG's `IEND`, and wiring CyberChef's register/subsection/fork flow-control for
+the boss. Hands-on execution across seven escalating techniques targets ~3-4
+hours for a junior.
 
-### Difficulty knobs
+## Artifacts (`build/build.py` → `handout/`)
 
-- Number of layers (3 = easy, 6+ = medium).
-- Swap a recognizable layer (Base64) for a less common one (Base58, Base85).
-- Use a multi-byte XOR key so participants must recover the key.
-- Add a red-herring layer that looks like encoding but is identity (e.g. a
-  reversible transpose) to test discipline.
+- `cipher.txt` — the single starting blob.
+- `brief.txt` — the up-front prompt ("Peel it back. … collect all seven.").
 
-## Artifacts to generate (`build/build.py` → `handout/`)
+## Solution
 
-- `cipher.txt` — the final encoded blob (single line).
-- `brief.txt` — flavor + the only hint they get up front: "Something is hidden
-  in here. Peel it back." (Keep tool hints out of the handout; those live in the
-  hint ladder below.)
+See [`solution/ANSWER.md`](solution/ANSWER.md) for the per-stage CyberChef recipe
+and all flags, and [`solution/solve.py`](solution/solve.py) for the programmatic
+reference solver (prints all seven flags; doubles as the solvability check).
 
-## Solution outline
+## Hint ladder (one rung per stuck stage)
 
-See [`solution/solve.py`](solution/solve.py) for the programmatic reverse, and
-[`solution/ANSWER.md`](solution/ANSWER.md) for the CyberChef recipe and flag.
-
-## Hint ladder
-
-1. "It's layers. What does the very first character pattern look like?" (Base64 — note the `=` padding.)
-2. "Drop it into CyberChef and try the *Magic* operation. It'll peel a couple, then go quiet."
-3. "After Base64 you'll see hex. After hex it looks like a token but nothing decodes — what if the order is just flipped?" (Reverse.)
-4. "That alphanumeric string has no `0`, `O`, `I`, or `l`. That's not Base64 — look at the alphabet." (ROT13 then Base58.)
-5. "The innermost layer is a repeating-key XOR. You know the plaintext starts with `flag{` — use that crib to recover the key, then watch it repeat."
+1. Stage 1: the trailing `=` and the alphabet say Base64. Try Magic.
+2. Stage 2: this isn't Base64 — count the punctuation. It's Base85 (`From Base85`, alphabet `!-u`).
+3. Stage 3: it's a Vigenère cipher; the key is the keyword from your last flag (`alphabet`).
+4. Stage 4: `From Base64`, then XOR. You weren't given the key — every flag is `flag{maze_N_...}`, so crib-drag `flag{maze_4_` to recover it.
+5. Stage 5: `From Hex`, then read the first bytes — `1f 8b` is gzip. `Gunzip`.
+6. Stage 6: `From Base64` then `Render Image`. The flag is in the picture — and there's data after the PNG's `IEND`.
+7. Stage 7: `Register` the salt, `Subsection` the payload, `Fork` on `|`, `From Hex`, `XOR` key `pixels$R0` (UTF8), `Merge`.

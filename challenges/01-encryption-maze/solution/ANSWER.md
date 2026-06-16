@@ -1,59 +1,61 @@
-# Answer — Encryption Maze
+# Answer — Encryption Maze (7-stage)
 
-**Flag:** `flag{p33l_th3_3ncrypt10n_m4z3}`
+Seven flags; the master flag is the canonical submission. Flags chain: each
+stage's keyword unlocks the next keyed stage.
 
-## CyberChef recipe (outer → inner)
+| Stage | Flag |
+|-------|------|
+| 1 | `flag{maze_1_trust_the_magic}` |
+| 2 | `flag{maze_2_alphabet}` |
+| 3 | `flag{maze_3_vigenere}` |
+| 4 | `flag{maze_4_crib_and_brute}` |
+| 5 | `flag{maze_5_inflate}` |
+| 6 | `flag{maze_6_pixels}` |
+| 7 (master) | `flag{maze_7_full_recipe_unl0ck3d}` |
 
-Drop `cipher.txt` into the input and stack these operations top-to-bottom:
+## CyberChef recipe per stage
 
-1. **From Base64**
-2. **From Hex**
-3. **Reverse** — *Reverse by: Character* (this is the red-herring layer; it is
-   not a "decode," just an order flip)
-4. **ROT13** — leave *Rotate lower/upper case* on, *Rotate numbers* **off**
-5. **From Base58** — alphabet `123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz` (Bitcoin, the default)
-6. **XOR** — Key: `maze` (UTF-8)
+1. **From Base64** -> flag 1 + instructions + a Base85 blob.
+2. **From Base85** (Alphabet: standard `!-u`) -> flag 2 + a Vigenere blob.
+3. **Vigenere Decode**, Key `alphabet` (the keyword from flag 2) -> flag 3 + a
+   Base64/XOR blob.
+4. **From Base64**, then **XOR**, Key `vigenere`, key type **UTF8**.
+   Key recovery: the block starts with the crib `flag{maze_4_`; XOR it against
+   the first 12 bytes -> keystream `vigenerevige`, period 8 -> key `vigenere`
+   (flag 3's keyword). The **XOR Brute Force** op demonstrates the single-byte
+   case. -> flag 4 + a hex blob.
+5. **From Hex** (bytes begin `1f 8b 08` = gzip) -> **Gunzip** -> flag 5 + a
+   Base64 blob.
+6. **From Base64** -> **Render Image**; flag 6 is drawn on the bitmap. The PNG
+   ends at its `IEND` chunk; the bytes after it (skip `IEND` + the 4-byte CRC =
+   8 bytes past the start of `IEND`) are the boss input -- carve them.
+7. Boss (build this recipe top-to-bottom):
+   - **Register**, Extractor `salt:(\w+)` -> captures `n3o` into `$R0`
+   - **Subsection**, Section (regex) `payload:([0-9a-f|]+)` -> targets only the hex payload
+   - **Fork**, Split delimiter `|`, Merge delimiter empty
+   - **From Hex**
+   - **XOR**, Key `pixels$R0`, key type **UTF8** (CyberChef substitutes `$R0` ->
+     `n3o`, so the effective key is `pixelsn3o`)
+   - **Merge** (closes the Fork)
+   - **Merge** (closes the Subsection)
+   The decoded payload contains the master flag `flag{maze_7_full_recipe_unl0ck3d}`.
 
-Output: `flag{p33l_th3_3ncrypt10n_m4z3}`
+## Notes
 
-## What the participant sees at each peel
+- **Key field types matter:** the XOR key fields in stages 4 and 7 must be set
+  to **UTF8** (not Hex/Base64), or the key bytes are misread.
+- Flags chain: stage 2's keyword (`alphabet`) is the stage-3 Vigenere key; stage
+  3's keyword (`vigenere`) is the stage-4 XOR key; stage 6's keyword (`pixels`)
+  plus the registered salt (`n3o`) is the boss key (`pixelsn3o`).
+- The salt `n3o` is fixed in `build/build.py`; flags and keys are defined once
+  there as the single source of truth.
+- The reference solver verifies stages 1-5 and 7 programmatically; flag 6 is
+  rendered in the PNG and confirmed by a valid image (not OCR'd).
 
-| Step | Output |
-|------|--------|
-| input (`cipher.txt`) | `MzM0NjZm…UTM=` (Base64; `=` padding is the tell) |
-| From Base64 | `33466f4c6d737538…5151513` (hex — only `0-9a-f`) |
-| From Hex | `3FoLmsu8xgP2Ug2rFTjpTTumia1YUK8KRHPvD7FQ3` (looks like a token) |
-| Reverse | `3QF7DvPHRK8KUY1aimuTTpjTFr2gU2Pgx8usmLoF3` |
-| ROT13 | `3DS7QiCUEX8XHL1nvzhGGcwGSe2tH2Ctk8hfzYbS3` (valid Base58) |
-| From Base58 | 28 non-printable bytes — the XOR ciphertext |
-| XOR `maze` | `flag{p33l_th3_3ncrypt10n_m4z3}` |
-
-## Walkthrough notes
-
-- **Base64 → Hex → looks-like-a-token.** Magic peels Base64 and Hex for free.
-  After Hex you get a 41-char alphanumeric string. Magic will *not* reliably
-  call the next move, because it is a **reverse**, not a codec — the discipline
-  test. A junior who keeps spamming Magic stalls here; the move is to notice
-  nothing decodes and try a transpose/reverse.
-- **Reverse → ROT13.** After reversing, the string is still alphanumeric.
-  ROT13 turns it into a valid Base58 string (Magic may now suggest ROT13).
-- **Base58, not Base64.** The alphabet has no `0`, `O`, `I`, or `l` and no `+`/`/`
-  — that is the giveaway it is Base58. Magic ranks Base58 below Base64, so the
-  participant should recognize it by alphabet rather than trusting Magic's top
-  pick.
-- **XOR key recovery (the main time sink).** From Base58 yields raw bytes that
-  decode to nothing. Because the plaintext starts with the known crib `flag{`,
-  XOR the first 5 cipher bytes against `flag{` to recover the keystream
-  `m a z e m`. The repeat (`m` at positions 0 and 4) reveals the period is 4, so
-  the key is `maze`. `solution/solve.py:recover_key` performs exactly this and
-  reduces the keystream to its minimal period.
-
-## Reproduce programmatically
+## Reproduce
 
 ```
-python build/build.py      # regenerates handout/cipher.txt + brief.txt
-python solution/solve.py   # prints the recovered key (stderr) and flag (stdout)
+python build/build.py      # regenerate handout/cipher.txt + brief.txt
+python solution/solve.py   # prints all 7 stage flags (stderr) + master (stdout)
+python -m pytest tests/ -v # unit + full-chain roundtrip
 ```
-
-The flag and XOR key are defined once at the top of `build/build.py`
-(`FLAG`, `XOR_KEY`) and are the single source of truth.
