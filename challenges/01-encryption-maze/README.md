@@ -22,18 +22,24 @@ force.
 
 ## Intended mechanics
 
-A clean cascade where each layer's output is obviously the next layer's input.
-Suggested recipe (outer → inner), tune length to set difficulty:
+A cascade where each layer's output feeds the next, with two layers chosen to
+defeat blind *Magic* spamming. **As-built** recipe (innermost applied first;
+outermost is what the participant first sees):
 
 1. Start with `FLAG` plaintext.
-2. XOR with a single-byte or short repeating key.
-3. ROT13 (or Caesar shift N).
-4. Base32 encode.
-5. Hex encode.
-6. Base64 encode  ← this is what the participant first sees.
+2. XOR with a short repeating key (`maze`).  ← key recovery, the main time sink
+3. Base58 encode (Bitcoin alphabet).         ← Magic ranks below Base64
+4. ROT13.
+5. Reverse the string.                        ← red herring: not a codec
+6. Hex encode.
+7. Base64 encode.                             ← this is what the participant first sees.
 
-To **solve**, reverse the list: Base64 decode → from hex → Base32 decode →
-ROT13 → XOR (same key). CyberChef's *Magic* op should hint each step.
+To **solve**, reverse the list: From Base64 → From Hex → Reverse → ROT13 →
+From Base58 → XOR (key `maze`). *Magic* peels the Base64/Hex/ROT13 layers but
+stalls on the Reverse and under-ranks the Base58, so the participant must reason
+about layer shape. The flag and key are the single source of truth in
+`build/build.py`; see `solution/ANSWER.md` for the full recipe and intermediate
+values.
 
 ### Difficulty knobs
 
@@ -57,7 +63,8 @@ See [`solution/solve.py`](solution/solve.py) for the programmatic reverse, and
 
 ## Hint ladder
 
-1. "It's layers. What does the very first character pattern look like?"
-2. "Drop it into CyberChef and try the *Magic* operation."
-3. "After Base64 you'll see hex. Keep going — Base32 is next."
-4. "The innermost layer is an XOR. The key is short."
+1. "It's layers. What does the very first character pattern look like?" (Base64 — note the `=` padding.)
+2. "Drop it into CyberChef and try the *Magic* operation. It'll peel a couple, then go quiet."
+3. "After Base64 you'll see hex. After hex it looks like a token but nothing decodes — what if the order is just flipped?" (Reverse.)
+4. "That alphanumeric string has no `0`, `O`, `I`, or `l`. That's not Base64 — look at the alphabet." (ROT13 then Base58.)
+5. "The innermost layer is a repeating-key XOR. You know the plaintext starts with `flag{` — use that crib to recover the key, then watch it repeat."
