@@ -3,3 +3,5 @@
 
 scapy>=2.5        # 02-dns-logs: craft/parse the pcap
 pyzipper>=0.3.6   # 03-siem-password-hunt: build an AES-encrypted password-protected zip
+Pillow>=10.0      # 01-encryption-maze: render the stage-6 flag into a PNG
+pytest>=8.0       # dev: challenge codec + round-trip tests
