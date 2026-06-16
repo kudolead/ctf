@@ -35,6 +35,54 @@ BOSS_SALT = "n3o"
 
 MARKER = "\n--- NEXT STAGE INPUT (paste this into a fresh Input) ---\n"
 
+INSTR_1 = (
+    "Welcome to the Encryption Maze. You just used Base64 (the trailing '=' was "
+    "the tell) -- the Magic op would have spotted it too.\n"
+    "The next blob is NOT Base64: look at its alphabet -- it is dense with "
+    "punctuation (!#$%&*+). That is ASCII85 / Base85. Use 'From Base85' with the "
+    "standard alphabet (!-u)."
+)
+INSTR_2 = (
+    "Nice -- you recognised an encoding by its alphabet instead of trusting "
+    "Magic's top pick.\nThe next blob is a Vigenere cipher. The key is the "
+    "KEYWORD from THIS flag: 'alphabet'. Use 'Vigenere Decode'."
+)
+INSTR_3 = (
+    "The next blob is Base64, and underneath that it is XOR'd. 'From Base64' "
+    "first.\nThe key is NOT given. Recover it: every flag here looks like "
+    "flag{maze_N_...}, so you have a 12-character known-plaintext crib. The "
+    "'XOR Brute Force' op handles single-byte keys; for this multi-byte key, XOR "
+    "the crib against the first bytes -- the repeating result will look familiar "
+    "(hint: it is the keyword from your last flag)."
+)
+INSTR_4 = (
+    "The next blob is hex. 'From Hex', then look at the first bytes: 1f 8b 08 is "
+    "the gzip magic number. Finish with 'Gunzip' (or 'Raw Inflate')."
+)
+INSTR_5 = (
+    "The next blob is Base64 of a PNG image. 'From Base64' then 'Render Image' to "
+    "READ your stage-6 flag off the pixels.\n"
+    "But a PNG ends at its IEND chunk -- the bytes AFTER it are the final boss "
+    "input. Carve them (e.g. 'Detect File Type' confirms the trailing data).\n"
+    "FINAL BOSS: the carved text holds a salt and a pipe-delimited hex payload. "
+    "You'll need CyberChef's flow-control ops: Register (to capture the salt into "
+    "$R0), Subsection (to target only the hex payload), and Fork (to split on the "
+    "pipe). Each chunk is hex, then XOR'd; the key is THIS stage's keyword "
+    "'pixels' followed by the captured salt -- put 'pixels$R0' in the XOR key "
+    "field -- then Merge."
+)
+MASTER_BLOCK = (
+    f"{FLAG_7}\n"
+    ":: You escaped the Encryption Maze! ::\n"
+    "You chained Magic, alphabet-recognition, Vigenere, XOR key-recovery, "
+    "decompression, image carving, and CyberChef registers/subsections/forks. "
+    "Submit the master flag above."
+)
+BRIEF = (
+    "Something is hidden in here. Peel it back.\n"
+    "Each layer teaches you the next and drops a flag -- collect all seven.\n"
+)
+
 
 def xor(data: bytes, key: bytes) -> bytes:
     return bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
@@ -95,8 +143,39 @@ def encode_boss(master_block: str) -> str:
     return f"salt:{BOSS_SALT}\npayload:" + "|".join(parts)
 
 
-def main() -> None:  # replaced in Task 5
-    pass
+def reveal(flag: str, instructions: str, payload: str) -> str:
+    """Assemble a revealed block: flag, instructions, then the next ciphertext
+    after a unique marker. Build-time assert guarantees solve can split on it."""
+    block = f"{flag}\n{instructions}{MARKER}{payload}"
+    assert block.count(MARKER) == 1, "marker collision in revealed block"
+    return block
+
+
+def main() -> None:
+    HANDOUT.mkdir(exist_ok=True)
+
+    # Inner -> outer. Each `ct_n` is the ciphertext the player feeds to stage n.
+    boss_blob = encode_boss(MASTER_BLOCK)                       # stage 7 input
+    ct6 = base64.b64encode(render_png(FLAG_6) + boss_blob.encode("utf-8")).decode("ascii")
+
+    revealed_5 = reveal(FLAG_5, INSTR_5, ct6)
+    ct5 = gzip.compress(revealed_5.encode("utf-8"), mtime=0).hex()
+
+    revealed_4 = reveal(FLAG_4, INSTR_4, ct5)
+    ct4 = base64.b64encode(xor(revealed_4.encode("utf-8"), XOR_KEY)).decode("ascii")
+
+    revealed_3 = reveal(FLAG_3, INSTR_3, ct4)
+    ct3 = vigenere(revealed_3, VIGENERE_KEY)
+
+    revealed_2 = reveal(FLAG_2, INSTR_2, ct3)
+    ct2 = b85encode(revealed_2.encode("utf-8"))
+
+    revealed_1 = reveal(FLAG_1, INSTR_1, ct2)
+    cipher = base64.b64encode(revealed_1.encode("utf-8")).decode("ascii")
+
+    (HANDOUT / "cipher.txt").write_text(cipher + "\n", encoding="utf-8")
+    (HANDOUT / "brief.txt").write_text(BRIEF, encoding="utf-8")
+    print(f"wrote cipher.txt ({len(cipher)} bytes) and brief.txt to {HANDOUT}")
 
 
 if __name__ == "__main__":

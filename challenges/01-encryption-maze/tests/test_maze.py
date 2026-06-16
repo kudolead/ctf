@@ -66,3 +66,25 @@ def test_encode_boss_roundtrips_and_is_cyberchef_shaped():
         build.xor(bytes.fromhex(p), key) for p in payload.split("|")
     ).decode()
     assert recovered == master
+
+
+def test_build_is_deterministic_and_writes_artifacts(tmp_path, monkeypatch):
+    monkeypatch.setattr(build, "HANDOUT", tmp_path)
+    build.main()
+    cipher = (tmp_path / "cipher.txt").read_text(encoding="utf-8")
+    brief = (tmp_path / "brief.txt").read_text(encoding="utf-8")
+    assert cipher.strip()                 # non-empty single blob
+    assert "Peel it back" in brief
+    # determinism: a second build into a clean dir yields identical bytes
+    out2 = tmp_path / "again"
+    out2.mkdir()
+    monkeypatch.setattr(build, "HANDOUT", out2)
+    build.main()
+    assert (out2 / "cipher.txt").read_text(encoding="utf-8") == cipher
+
+
+def test_stage1_is_base64_of_a_block_with_flag1_and_marker():
+    block = build.reveal(build.FLAG_1, "instr", "PAYLOAD")
+    assert block.startswith(build.FLAG_1)
+    assert block.count(build.MARKER) == 1
+    assert block.endswith("PAYLOAD")
