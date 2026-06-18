@@ -48,60 +48,60 @@ BRIEF = (
 )
 
 # Spoiler-protected hint ladder. Each hint is base64-encoded on its own line in
-# handout/hints.txt so a player can decode just the one they need. The first
-# ("Start") hint reveals how many layers the chain has.
+# handout/hints.txt so a player can decode just the one they need. The hints
+# point at the clue but never name the encoding/cipher/op/key -- the solver
+# makes the final leap. Use Hint N as you peel the Nth layer. The first
+# ("Start") hint only reveals how many layers the chain has.
 HINTS = [
     ("Start", [
-        "This is a 7-stage chain: you peel 7 encodings/ciphers in sequence, and "
-        "each stage drops one flag (7 total). Work outside-in -- decode one "
-        "layer, read its flag, feed the leftover blob into the next stage.",
+        "This chain is 7 layers nested one inside another. Peeling a layer "
+        "reveals that layer's flag plus the blob for the next layer -- seven "
+        "flags in all, each layer a different kind of encoding or cipher.",
     ]),
-    ("Stage 1", [
+    ("Hint 1", [
         "Trailing '=' padding and an A-Za-z0-9+/ alphabet point to one very "
         "common encoding.",
-        "It's Base64. Use 'From Base64' (the Magic op also catches it).",
     ]),
-    ("Stage 2", [
+    ("Hint 2", [
         "This blob is dense with punctuation (! # $ % & * ...), not just letters "
-        "and digits -- so it is not Base64.",
-        "A printable alphabet running roughly from '!' to 'u' is ASCII85 / Base85.",
-        "Use 'From Base85' with the standard alphabet (!-u).",
+        "and digits -- so it is not Base64. The printable characters run roughly "
+        "from '!' to 'u'; that range is your clue.",
     ]),
-    ("Stage 3", [
-        "Mostly letters, shifted around -- a classic cipher. But the shift is not "
-        "constant, so it is not Caesar/ROT.",
-        "It's Vigenere (a repeating keyword). Use 'Vigenere Decode'.",
-        "The key is a word you already earned: the keyword inside your previous "
-        "(stage-2) flag -- 'alphabet'.",
+    ("Hint 3", [
+        "Now it reads as mostly letters with the rhythm of real words underneath, "
+        "but every letter is shifted. The shift is not constant across the "
+        "message -- it repeats on a fixed cycle. Something short sets that cycle, "
+        "and you have already seen a word that fits, very recently.",
     ]),
-    ("Stage 4", [
-        "Two layers here. The outer is Base64 again -- 'From Base64' gives raw, "
-        "non-printable bytes.",
-        "Those bytes are XOR'd with a short repeating key, which you are NOT given.",
-        "You know the text starts with 'flag{maze_4_' (12 chars). XOR that crib "
-        "against the first bytes to recover the key ('vigenere'), then XOR the "
-        "whole blob with it (key type UTF8).",
+    ("Hint 4", [
+        "Two layers stacked. Undo the familiar outer encoding first and you get "
+        "raw, non-printable bytes -- the sign of a byte-level operation, not "
+        "another text codec. It is a reversible byte combiner driven by a short "
+        "repeating key you are not handed. But you know exactly how every flag "
+        "begins; line that known prefix up against the first bytes to peel the "
+        "key back out.",
     ]),
-    ("Stage 5", [
-        "The next blob is only 0-9 and a-f -- that is hexadecimal. 'From Hex' first.",
-        "Inspect the first decoded bytes: 1f 8b 08. That is a file magic number.",
-        "1f 8b = gzip. Finish with 'Gunzip' (or 'Raw Inflate').",
+    ("Hint 5", [
+        "This blob uses only 0-9 and a-f -- a clue to how the bytes are written "
+        "down, not what they mean. Turn it into raw bytes and read the first few: "
+        "a recognisable signature sits right at the start. Identify that "
+        "signature and apply the expansion step that matches it.",
     ]),
-    ("Stage 6", [
-        "Base64 again -- decode it, then check the file signature (it starts with "
-        "the PNG magic bytes).",
-        "'From Base64' then 'Render Image' shows the flag drawn in the picture.",
-        "A PNG ends at its IEND chunk; data is appended AFTER it. Carve the bytes "
-        "past IEND (skip IEND plus its 4-byte CRC) -- that is the final boss input.",
+    ("Hint 6", [
+        "Undo the familiar outer encoding, then compare the leading bytes to "
+        "known file signatures -- this layer is an image. View it to read what is "
+        "on it. Then notice the data runs longer than the image itself needs: "
+        "something is hidden AFTER the image's end-of-file marker. Recover those "
+        "trailing bytes.",
     ]),
-    ("Stage 7", [
-        "The carved text is 'salt:<word>' then 'payload:<hex>|<hex>|<hex>'. This "
-        "needs CyberChef flow-control ops, not a plain decode.",
-        "Register the salt into $R0 (regex salt:(\\w+)). Subsection just the "
-        "payload (regex payload:([0-9a-f|]+)). Fork on '|'. Then 'From Hex'.",
-        "XOR each chunk, key 'pixels$R0' UTF8 (stage keyword 'pixels' + the "
-        "registered salt). Merge to close the Fork, Merge again to close the "
-        "Subsection -- the master flag appears in the output.",
+    ("Hint 7", [
+        "The recovered text holds a labelled token and a separated list of "
+        "byte-chunks. This is not a single decode: set that token aside, isolate "
+        "just the chunk list, handle each chunk on its own, and build the key by "
+        "joining a word from this stage with the captured token to reverse the "
+        "same byte-combiner you met earlier. Lean on your tool's flow-control "
+        "features -- capture-to-a-variable, operate-on-a-substring, and "
+        "split-then-rejoin.",
     ]),
 ]
 
@@ -171,8 +171,9 @@ def render_hints() -> str:
     lines = [
         "Hints: encoded using base64 to avoid spoiling",
         "",
-        "Decode the base64 line(s) under a step (From Base64) only when you are "
-        "stuck on that step. Hints go from gentle to specific.",
+        "Decode Hint N (From Base64) only when you are stuck on the Nth layer. "
+        "Each hint points at the clue without naming the answer; [Start] only "
+        "tells you how many layers there are.",
         "",
     ]
     for label, hints in HINTS:
