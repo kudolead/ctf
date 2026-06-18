@@ -43,8 +43,67 @@ MASTER_BLOCK = (
 )
 BRIEF = (
     "Something is hidden in here. Peel it back.\n"
-    "Seven flags are buried in the layers -- no hints, recognise each one yourself.\n"
+    "Seven flags are buried in the layers -- recognise each one yourself.\n"
+    "Stuck? hints.txt has base64-encoded nudges; decode only the one you need.\n"
 )
+
+# Spoiler-protected hint ladder. Each hint is base64-encoded on its own line in
+# handout/hints.txt so a player can decode just the one they need. The first
+# ("Start") hint reveals how many layers the chain has.
+HINTS = [
+    ("Start", [
+        "This is a 7-stage chain: you peel 7 encodings/ciphers in sequence, and "
+        "each stage drops one flag (7 total). Work outside-in -- decode one "
+        "layer, read its flag, feed the leftover blob into the next stage.",
+    ]),
+    ("Stage 1", [
+        "Trailing '=' padding and an A-Za-z0-9+/ alphabet point to one very "
+        "common encoding.",
+        "It's Base64. Use 'From Base64' (the Magic op also catches it).",
+    ]),
+    ("Stage 2", [
+        "This blob is dense with punctuation (! # $ % & * ...), not just letters "
+        "and digits -- so it is not Base64.",
+        "A printable alphabet running roughly from '!' to 'u' is ASCII85 / Base85.",
+        "Use 'From Base85' with the standard alphabet (!-u).",
+    ]),
+    ("Stage 3", [
+        "Mostly letters, shifted around -- a classic cipher. But the shift is not "
+        "constant, so it is not Caesar/ROT.",
+        "It's Vigenere (a repeating keyword). Use 'Vigenere Decode'.",
+        "The key is a word you already earned: the keyword inside your previous "
+        "(stage-2) flag -- 'alphabet'.",
+    ]),
+    ("Stage 4", [
+        "Two layers here. The outer is Base64 again -- 'From Base64' gives raw, "
+        "non-printable bytes.",
+        "Those bytes are XOR'd with a short repeating key, which you are NOT given.",
+        "You know the text starts with 'flag{maze_4_' (12 chars). XOR that crib "
+        "against the first bytes to recover the key ('vigenere'), then XOR the "
+        "whole blob with it (key type UTF8).",
+    ]),
+    ("Stage 5", [
+        "The next blob is only 0-9 and a-f -- that is hexadecimal. 'From Hex' first.",
+        "Inspect the first decoded bytes: 1f 8b 08. That is a file magic number.",
+        "1f 8b = gzip. Finish with 'Gunzip' (or 'Raw Inflate').",
+    ]),
+    ("Stage 6", [
+        "Base64 again -- decode it, then check the file signature (it starts with "
+        "the PNG magic bytes).",
+        "'From Base64' then 'Render Image' shows the flag drawn in the picture.",
+        "A PNG ends at its IEND chunk; data is appended AFTER it. Carve the bytes "
+        "past IEND (skip IEND plus its 4-byte CRC) -- that is the final boss input.",
+    ]),
+    ("Stage 7", [
+        "The carved text is 'salt:<word>' then 'payload:<hex>|<hex>|<hex>'. This "
+        "needs CyberChef flow-control ops, not a plain decode.",
+        "Register the salt into $R0 (regex salt:(\\w+)). Subsection just the "
+        "payload (regex payload:([0-9a-f|]+)). Fork on '|'. Then 'From Hex'.",
+        "XOR each chunk, key 'pixels$R0' UTF8 (stage keyword 'pixels' + the "
+        "registered salt). Merge to close the Fork, Merge again to close the "
+        "Subsection -- the master flag appears in the output.",
+    ]),
+]
 
 
 def xor(data: bytes, key: bytes) -> bytes:
@@ -106,6 +165,24 @@ def encode_boss(master_block: str) -> str:
     return f"salt:{BOSS_SALT}\npayload:" + "|".join(parts)
 
 
+def render_hints() -> str:
+    """Render handout/hints.txt: a heading plus, per step, each hint base64-
+    encoded on its own line so a player can decode only the nudge they need."""
+    lines = [
+        "Hints: encoded using base64 to avoid spoiling",
+        "",
+        "Decode the base64 line(s) under a step (From Base64) only when you are "
+        "stuck on that step. Hints go from gentle to specific.",
+        "",
+    ]
+    for label, hints in HINTS:
+        lines.append(f"[{label}]")
+        for hint in hints:
+            lines.append(base64.b64encode(hint.encode("utf-8")).decode("ascii"))
+        lines.append("")
+    return "\n".join(lines)
+
+
 def reveal(flag: str, instructions: str, payload: str) -> str:
     """Assemble a revealed block: flag, instructions, then the next ciphertext
     after a unique marker. Build-time assert guarantees solve can split on it."""
@@ -138,7 +215,8 @@ def main() -> None:
 
     (HANDOUT / "cipher.txt").write_text(cipher + "\n", encoding="utf-8")
     (HANDOUT / "brief.txt").write_text(BRIEF, encoding="utf-8")
-    print(f"wrote cipher.txt ({len(cipher)} bytes) and brief.txt to {HANDOUT}")
+    (HANDOUT / "hints.txt").write_text(render_hints(), encoding="utf-8")
+    print(f"wrote cipher.txt ({len(cipher)} bytes), brief.txt, and hints.txt to {HANDOUT}")
 
 
 if __name__ == "__main__":

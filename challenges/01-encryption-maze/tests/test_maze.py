@@ -116,6 +116,21 @@ def test_full_chain_roundtrip(tmp_path, monkeypatch):
     ]
 
 
+def test_hints_file_is_base64_encoded_and_decodable(tmp_path, monkeypatch):
+    monkeypatch.setattr(build, "HANDOUT", tmp_path)
+    build.main()
+    text = (tmp_path / "hints.txt").read_text(encoding="utf-8")
+    assert text.startswith("Hints: encoded using base64 to avoid spoiling")
+    decoded = []
+    for line in text.splitlines():
+        if (not line or line.startswith("[") or line.startswith("Decode")
+                or line.startswith("Hints:")):
+            continue
+        decoded.append(base64.b64decode(line).decode("utf-8"))
+    assert len(decoded) >= 8                      # start hint + >=1 per stage
+    assert "7" in decoded[0] or "seven" in decoded[0].lower()
+
+
 def test_stage2_base85_is_cyberchef_safe(tmp_path, monkeypatch):
     # Stage-2 ASCII85 payload must have no 'z' zero-group abbreviation and no
     # whitespace, so CyberChef 'From Base85' (alphabet !-u) decodes it cleanly.
