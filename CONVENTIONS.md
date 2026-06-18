@@ -15,6 +15,19 @@ flag{lowercase_with_underscores}
   build script should treat the flag as the single source of truth (define it
   once at the top of `build/build.py`).
 
+### Multi-stage (chained) challenges
+
+A challenge may be a self-guiding chain of stages, each with its own flag, when
+that serves the learning design. In that case:
+
+- The build script still defines every flag once, at the top, as the single
+  source of truth.
+- All stage flags are listed in `solution/ANSWER.md`.
+- The final/master flag is the canonical submission; intermediate flags are
+  collectible checkpoints and may double as key material for later stages.
+
+`01-encryption-maze` is the reference example.
+
 ## Folder layout (per challenge)
 
 ```
