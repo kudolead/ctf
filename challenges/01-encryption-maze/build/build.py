@@ -58,50 +58,67 @@ HINTS = [
         "reveals that layer's flag plus the blob for the next layer -- seven "
         "flags in all, each layer a different kind of encoding or cipher.",
     ]),
-    ("Hint 1", [
+    ("Encoding 1", [
         "Trailing '=' padding and an A-Za-z0-9+/ alphabet point to one very "
         "common encoding.",
+        "It is the web's default way of packing binary into printable text; your "
+        "tool's auto-detect ('Magic') will flag it at once.",
     ]),
-    ("Hint 2", [
+    ("Encoding 2", [
         "This blob is dense with punctuation (! # $ % & * ...), not just letters "
-        "and digits -- so it is not Base64. The printable characters run roughly "
-        "from '!' to 'u'; that range is your clue.",
+        "and digits -- so it is not Base64.",
+        "The printable characters run roughly from '!' to 'u'; that wider range "
+        "is your clue -- a denser alphabet packs more bits per character.",
+        "It is a more compact cousin of the previous encoding, common in "
+        "PostScript/PDF. Match its alphabet and reverse it.",
     ]),
-    ("Hint 3", [
+    ("Encoding 3", [
         "Now it reads as mostly letters with the rhythm of real words underneath, "
-        "but every letter is shifted. The shift is not constant across the "
-        "message -- it repeats on a fixed cycle. Something short sets that cycle, "
-        "and you have already seen a word that fits, very recently.",
+        "but every letter looks shifted.",
+        "The shift is not constant across the message -- it repeats on a fixed "
+        "cycle, which rules out a single fixed shift (the Caesar/ROT family).",
+        "A short keyword sets that cycle, and you have already earned a word that "
+        "fits, very recently. Feed that word to the matching classic-cipher "
+        "decoder.",
     ]),
-    ("Hint 4", [
-        "Two layers stacked. Undo the familiar outer encoding first and you get "
-        "raw, non-printable bytes -- the sign of a byte-level operation, not "
-        "another text codec. It is a reversible byte combiner driven by a short "
-        "repeating key you are not handed. But you know exactly how every flag "
-        "begins; line that known prefix up against the first bytes to peel the "
-        "key back out.",
+    ("Encoding 4", [
+        "Two layers stacked. Undo the familiar outer text-encoding first; "
+        "underneath is raw, non-printable bytes.",
+        "Raw bytes mean a byte-level operation, not another text codec -- a "
+        "simple reversible combiner driven by a short repeating key you are not "
+        "given.",
+        "You know exactly how every flag in this maze begins. Line that known "
+        "prefix against the first bytes; combining them exposes the repeating key "
+        "-- which, again, is a word you already collected.",
     ]),
-    ("Hint 5", [
-        "This blob uses only 0-9 and a-f -- a clue to how the bytes are written "
-        "down, not what they mean. Turn it into raw bytes and read the first few: "
-        "a recognisable signature sits right at the start. Identify that "
-        "signature and apply the expansion step that matches it.",
+    ("Encoding 5", [
+        "This blob uses only 0-9 and a-f: that tells you how the bytes are "
+        "written, not what they mean. Turn it into raw bytes first.",
+        "Read the first raw bytes -- a short, recognisable signature sits right "
+        "at the start. Many formats announce themselves that way.",
+        "That signature marks compressed data. Identify it and apply the matching "
+        "inflate/expansion step.",
     ]),
-    ("Hint 6", [
-        "Undo the familiar outer encoding, then compare the leading bytes to "
-        "known file signatures -- this layer is an image. View it to read what is "
-        "on it. Then notice the data runs longer than the image itself needs: "
-        "something is hidden AFTER the image's end-of-file marker. Recover those "
-        "trailing bytes.",
+    ("Encoding 6", [
+        "Undo the familiar outer text-encoding again, then compare the leading "
+        "bytes with known file signatures.",
+        "This layer is a picture -- render/preview it; the flag is drawn on the "
+        "image, not written as text.",
+        "The data runs longer than the picture needs: something is appended AFTER "
+        "the image's end-of-file marker. Carve those trailing bytes for the next "
+        "input.",
     ]),
-    ("Hint 7", [
-        "The recovered text holds a labelled token and a separated list of "
-        "byte-chunks. This is not a single decode: set that token aside, isolate "
-        "just the chunk list, handle each chunk on its own, and build the key by "
-        "joining a word from this stage with the captured token to reverse the "
-        "same byte-combiner you met earlier. Lean on your tool's flow-control "
-        "features -- capture-to-a-variable, operate-on-a-substring, and "
-        "split-then-rejoin.",
+    ("Encoding 7", [
+        "The recovered text has a clearly labelled token on one line and, on "
+        "another, a list of byte-chunks separated by a delimiter. This is not a "
+        "single decode.",
+        "Plan: capture that token aside for reuse, narrow your operations to only "
+        "the chunk list, then split it on the delimiter so each chunk is handled "
+        "on its own.",
+        "Each chunk is the same reversible byte-combiner from earlier; build its "
+        "key by joining a word from this stage's flag with the captured token. "
+        "Your tool's flow-control features (capture-to-a-variable, "
+        "operate-on-a-substring, split-then-rejoin) do all of it.",
     ]),
 ]
 
@@ -171,15 +188,16 @@ def render_hints() -> str:
     lines = [
         "Hints: encoded using base64 to avoid spoiling",
         "",
-        "Decode Hint N (From Base64) only when you are stuck on the Nth layer. "
-        "Each hint points at the clue without naming the answer; [Start] only "
-        "tells you how many layers there are.",
+        "Decode a hint (From Base64) only when you are stuck. Hints are grouped "
+        "per encoding and go gentle -> specific within a group; none name the "
+        "answer. [Start] only tells you how many layers there are.",
         "",
     ]
     for label, hints in HINTS:
         lines.append(f"[{label}]")
-        for hint in hints:
-            lines.append(base64.b64encode(hint.encode("utf-8")).decode("ascii"))
+        for i, hint in enumerate(hints, 1):
+            b64 = base64.b64encode(hint.encode("utf-8")).decode("ascii")
+            lines.append(f"Hint {i}: {b64}")
         lines.append("")
     return "\n".join(lines)
 

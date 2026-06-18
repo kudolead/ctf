@@ -126,8 +126,9 @@ def test_hints_file_is_base64_encoded_and_decodable(tmp_path, monkeypatch):
         if (not line or line.startswith("[") or line.startswith("Decode")
                 or line.startswith("Hints:")):
             continue
-        decoded.append(base64.b64decode(line).decode("utf-8"))
-    assert len(decoded) >= 8                      # start hint + >=1 per stage
+        payload = line.split(": ", 1)[1] if line.startswith("Hint ") else line
+        decoded.append(base64.b64decode(payload).decode("utf-8"))
+    assert len(decoded) >= 8                      # start hint + >=1 per encoding
     assert "7" in decoded[0] or "seven" in decoded[0].lower()
 
 
